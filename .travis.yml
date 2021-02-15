@@ -1,3 +1,15 @@
+# ----------------------------------------------------------------------------
+#
+# Package             : cppcheck
+# Source Repo         : https://github.com/openstack/glance
+# Travis Job Link     : https://travis-ci.com/github/gururajrkatti/wtforms
+# Created travis.yml  : Yes
+# Maintainer          : Gururaj R Katti <Gururaj.Katti@ibm.com>
+#
+# Script License      : Apache License, Version 2 or later
+#
+# ----------------------------------------------------------------------------
+
 language: cpp
 dist: xenial
 
@@ -20,7 +32,12 @@ env:
 before_install:
 # install needed deps
  - travis_retry sudo apt-get update -qq
- - travis_retry sudo apt-get install -qq python3-pip libxml2-utils libpcre3 gdb unzip wx-common xmlstarlet python3-dev liblua5.3-dev libcurl3 libcairo2-dev libsigc++-2.0-dev tidy libopencv-dev libz3-dev
+ - |
+   if [ "$TRAVIS_CPU_ARCH" = "ppc64le" ]; then
+     travis_retry sudo apt-get install -qq python3-pip libxml2-utils libpcre3 gdb unzip wx-common xmlstarlet python3-dev liblua5.3-dev libcurl3 libcairo2-dev libsigc++-2.0-dev tidy libopencv-dev;
+   else
+     travis_retry sudo apt-get install -qq python3-pip libxml2-utils libpcre3 gdb unzip wx-common xmlstarlet python3-dev liblua5.3-dev libcurl3 libcairo2-dev libsigc++-2.0-dev tidy libopencv-dev libz3-dev;
+   fi
 # Python 2 modules 
  - travis_retry python2 -m pip install --user pytest==4.6.4
 # - travis_retry python2 -m pip install --user pylint
@@ -183,7 +200,35 @@ matrix:
         - CXX=g++ CXXFLAGS="${ORIGINAL_CXXFLAGS}" make cppcheck check -j$(nproc) -s
         - make clean
         - CXX=clang++ CXXFLAGS="${ORIGINAL_CXXFLAGS}" make cppcheck check -j $(nproc) -s
-
+# Power jobs
+# Removing -g, else compilation crashes on ppc64le
+# Removing "-native" which is not supported on ppc64le
+    - name: "ppc64le gcc -DCHECK_INTERNAL"
+      arch: ppc64le
+      compile: gcc 
+      env:
+        - ORIGINAL_CXXFLAGS="-pedantic -Wall -Wextra -Wcast-qual -Wno-deprecated-declarations -Wfloat-equal -Wmissing-declarations -Wmissing-format-attribute -Wno-long-long -Wpacked -Wredundant-decls -Wundef -Wno-shadow -Wno-missing-field-initializers -Wno-missing-braces -Wno-sign-compare -Wno-multichar -D_GLIBCXX_DEBUG "
+        - CXXFLAGS="${ORIGINAL_CXXFLAGS} -O2 -Wstrict-aliasing=2 -Werror=strict-aliasing -DCHECK_INTERNAL"
+    - name: "ppc64le clang -DCHECK_INTERNAL"
+      arch: ppc64le
+      compile: clang
+      dist: bionic  # Using bionic for ppc64le clang since xenail version fails with compilation errors
+      env: 
+         - ORIGINAL_CXXFLAGS="-pedantic -Wall -Wextra -Wcast-qual -Wno-deprecated-declarations -Wfloat-equal -Wmissing-declarations -Wmissing-format-attribute -Wno-long-long -Wpacked -Wredundant-decls -Wundef -Wno-shadow -Wno-missing-field-initializers -Wno-missing-braces -Wno-sign-compare -Wno-multichar -D_GLIBCXX_DEBUG "
+         - CXXFLAGS="${ORIGINAL_CXXFLAGS} -O2 -Wstrict-aliasing=2 -Werror=strict-aliasing -DCHECK_INTERNAL"
+    - name: "ppc64le gcc -DCHECK_INTERNAL MAKEFLAGS=HAVE_RULES=yes MATCHCOMPILER=yes VERIFY=1"
+      arch: ppc64le
+      compile: gcc
+      env: 
+         - ORIGINAL_CXXFLAGS="-pedantic -Wall -Wextra -Wcast-qual -Wno-deprecated-declarations -Wfloat-equal -Wmissing-declarations -Wmissing-format-attribute -Wno-long-long -Wpacked -Wredundant-decls -Wundef -Wno-shadow -Wno-missing-field-initializers -Wno-missing-braces -Wno-sign-compare -Wno-multichar -D_GLIBCXX_DEBUG "
+         - CXXFLAGS="${ORIGINAL_CXXFLAGS} -O2 -Wstrict-aliasing=2 -Werror=strict-aliasing -DCHECK_INTERNAL" MAKEFLAGS="HAVE_RULES=yes" MATCHCOMPILER=yes VERIFY=1
+    - name: "ppc64le clang -DCHECK_INTERNAL MAKEFLAGS=HAVE_RULES=yes MATCHCOMPILER=yes VERIFY=1"
+      arch: ppc64le
+      compile: clang
+      dist: bionic  # Using bionic for ppc64le clang since xenail version fails with compilation errors
+      env: 
+        - ORIGINAL_CXXFLAGS="-pedantic -Wall -Wextra -Wcast-qual -Wno-deprecated-declarations -Wfloat-equal -Wmissing-declarations -Wmissing-format-attribute -Wno-long-long -Wpacked -Wredundant-decls -Wundef -Wno-shadow -Wno-missing-field-initializers -Wno-missing-braces -Wno-sign-compare -Wno-multichar -D_GLIBCXX_DEBUG "
+        - CXXFLAGS="${ORIGINAL_CXXFLAGS} -O2 -Wstrict-aliasing=2 -Werror=strict-aliasing -DCHECK_INTERNAL" MAKEFLAGS="HAVE_RULES=yes" MATCHCOMPILER=yes VERIFY=1
 script:
 # fail the entire job as soon as one of the subcommands exits non-zero to save time and resources
   - set -e
